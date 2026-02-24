@@ -2560,26 +2560,14 @@ def write_cat_csvs(file, resfld, conf_th=0.8):
 
 
 if __name__ == "__main__":
-    # imagef = r"D:\seifert\PycharmProjects\LiuDimer\Data\Data library\Dimer in long axis\70x50\70x50 (6).tif"
-    # weights = r'D:\seifert\PycharmProjects\LiuDimer\yolov5-master\yolov5-master\runs\train-seg\exp13\weights\last.pt'
+
     weights = r'G:\seife\PycharmG\LiuDimerAI\yolov5-master\yolov5-master\runs\train-seg\exp13\weights\last.pt'
 
-    # resultf = Path(r'C:\Users\seifert\Pictures\Temp\Out\Sizes4')
-    # resultf = Path(r"F:\Data\LiuDimer\VisualizePred_NonInv")
     resultf = Path(r"F:\Data\Musfira_200226\Result")
 
     os.makedirs(resultf, exist_ok=True)
 
-    # datafld = r"D:\seifert\PycharmProjects\LiuDimer\Data\Data library"
-    # datafld = r'C:\Users\seifert\Pictures\Temp\DataLib\comparison'
     datafld = r"F:\Data\Musfira_200226\Data"
-    # datafld = r'D:\seifert\PycharmProjects\LiuDimer\SynthData\Test108'
-
-    # apply_imageENTIRE(imagef, weights)
-
-    # json_2_csv(r"D:\seifert\PycharmProjects\LiuDimer\yolov5-master\yolov5-master\segment\Results\res.json", r"D:\seifert\PycharmProjects\LiuDimer\yolov5-master\yolov5-master\segment\Results\res.csv")
-
-    # assert 4 == 5
 
     analye_folders_Set(fld=datafld,
                    resultf=resultf,
@@ -2587,7 +2575,3 @@ if __name__ == "__main__":
                    conf_thres=0.7,
                    iou_thres=0.45,
                    plain=False)
-
-
-    #opt = parse_opt()
-    #main(opt)
