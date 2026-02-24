@@ -1,0 +1,18 @@
+# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# Argoverse-HD dataset (ring-front-center camera) http://www.cs.cmu.edu/~mengtial/proj/streaming/ by Argo AI
+# Example usage: python train.py --data Argoverse.yaml
+# parent
+# ├── yolov5
+# └── datasets
+#     └── Argoverse  ← downloads here (31.3 GB)
+
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: F:\Data\LiuDimer\RealLabeled\YOLO_Format # dataset root dir
+train: images/train # train images (relative to 'path') 39384 images
+val: images/val # val images (relative to 'path') 15062 images
+
+# Classes
+names:
+  0: Molecule
+
+# Download script/URL (optional) ---------------------------------------------------------------------------------------
