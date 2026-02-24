@@ -2561,8 +2561,9 @@ def write_cat_csvs(file, resfld, conf_th=0.8):
 
 if __name__ == "__main__":
     # imagef = r"D:\seifert\PycharmProjects\LiuDimer\Data\Data library\Dimer in long axis\70x50\70x50 (6).tif"
-    weights = r'D:\seifert\PycharmProjects\LiuDimer\yolov5-master\yolov5-master\runs\train-seg\exp13\weights\last.pt'
+    # weights = r'D:\seifert\PycharmProjects\LiuDimer\yolov5-master\yolov5-master\runs\train-seg\exp13\weights\last.pt'
     weights = r'G:\seife\PycharmG\LiuDimerAI\yolov5-master\yolov5-master\runs\train-seg\exp13\weights\last.pt'
+
     # resultf = Path(r'C:\Users\seifert\Pictures\Temp\Out\Sizes4')
     # resultf = Path(r"F:\Data\LiuDimer\VisualizePred_NonInv")
     resultf = Path(r"F:\Data\Musfira_200226\Result")
