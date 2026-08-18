@@ -22,11 +22,16 @@ from classes.find_ith_smallest_distance import find_ith_smallest_distance
 
 NM_P_PX = 0.8431  # from yolov5-master/segment/predictTEM.py
 
+YOLOV5_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yolov5-master', 'yolov5-master')
 
-def load_marker_model(weights, device=''):
-    YOLOV5_ROOT = r'G:\seife\PycharmG\DNA_IS_TEM\yolov5-master\yolov5-master'
+
+def _ensure_yolov5_on_path():
     if YOLOV5_ROOT not in sys.path:
         sys.path.insert(0, YOLOV5_ROOT)
+
+
+def load_marker_model(weights, device=''):
+    _ensure_yolov5_on_path()
 
     from models.common import DetectMultiBackend
     from utils.torch_utils import select_device
@@ -40,39 +45,43 @@ def detect_markers_yolo(crop_rgb, model, device, imgsz=400, conf_thres=0.25, iou
     """Run the trained marker YOLOv5-seg model on one molecule crop.
     Returns (val, y, x, r) tuples matching detect_in_crop's output shape,
     val = detection confidence, r = sqrt(area / pi) from the predicted mask."""
-    YOLOV5_ROOT = r'G:\seife\PycharmG\DNA_IS_TEM\yolov5-master\yolov5-master'
-    if YOLOV5_ROOT not in sys.path:
-        sys.path.insert(0, YOLOV5_ROOT)
+    _ensure_yolov5_on_path()
 
     import torch
-    from utils.general import non_max_suppression, scale_boxes
+    from utils.augmentations import letterbox
+    from utils.general import check_img_size, non_max_suppression, scale_boxes, scale_segments
     from utils.segment.general import masks2segments, process_mask
 
+    stride = int(model.stride)
+    imgsz = check_img_size(imgsz, s=stride)
+
     h0, w0 = crop_rgb.shape[:2]
-    img = cv2.resize(crop_rgb, (imgsz, imgsz))
-    im = torch.from_numpy(img).to(device).float().permute(2, 0, 1) / 255
+    # Letterbox: uniform scale to fit within imgsz then pad to (imgsz, imgsz) -
+    # preserves aspect ratio/pixel scale instead of stretching the crop, and
+    # keeps the exact padded shape scale_boxes/scale_segments below expect.
+    img, _, _ = letterbox(crop_rgb, imgsz, auto=False)
+    im = torch.from_numpy(np.ascontiguousarray(img)).to(device).float().permute(2, 0, 1) / 255
     im = im.unsqueeze(0)
 
-    pred, proto = model(im, augment=False)[:2]
-    pred = non_max_suppression(pred, conf_thres, iou_thres, None, False, max_det=1000, nm=32)
-    det = pred[0]
-    if not len(det):
-        return []
+    with torch.no_grad():
+        pred, proto = model(im, augment=False)[:2]
+        pred = non_max_suppression(pred, conf_thres, iou_thres, None, False, max_det=1000, nm=32)
+        det = pred[0]
+        if not len(det):
+            return []
 
-    masks = process_mask(proto[0], det[:, 6:], det[:, :4], im.shape[2:], upsample=True)
-    det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], (h0, w0)).round()
+        masks = process_mask(proto[0], det[:, 6:], det[:, :4], im.shape[2:], upsample=True)
+        det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], (h0, w0)).round()
 
-    results = []
-    for seg, conf in zip(masks2segments(masks), det[:, 4].tolist()):
-        poly = seg.copy().astype(np.float32)
-        poly[:, 0] *= w0 / imgsz
-        poly[:, 1] *= h0 / imgsz
-        area = cv2.contourArea(poly.astype(np.float32))
-        if area <= 0:
-            continue
-        m = poly.mean(axis=0)
-        r = float(np.sqrt(area / np.pi))
-        results.append((float(conf), float(m[1]), float(m[0]), r))
+        results = []
+        for seg, conf in zip(masks2segments(masks), det[:, 4].tolist()):
+            poly = scale_segments(im.shape[2:], seg.copy().astype(np.float32), (h0, w0))
+            area = cv2.contourArea(poly.astype(np.float32))
+            if area <= 0:
+                continue
+            m = poly.mean(axis=0)
+            r = float(np.sqrt(area / np.pi))
+            results.append((float(conf), float(m[1]), float(m[0]), r))
     return results
 
 
@@ -248,6 +257,7 @@ def find_markers_in_cuts(result_dir, out_dir, margin=25, weights=None):
         if model is not None:
             crop_rgb = cv2.cvtColor((it['norm'] * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
             peaks = detect_markers_yolo(crop_rgb, model, device)
+            peaks = [(val, y, x, r) for val, y, x, r in peaks if in_region(it['region'], y, x)]
         else:
             peaks = detect_in_crop(it['inv'], it['region'], sigmas)
 

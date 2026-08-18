@@ -7,9 +7,7 @@ from PIL import Image
 import numpy as np
 from perlin_noise import PerlinNoise
 from tqdm import tqdm
-from shapely.geometry.polygon import Polygon
 from scipy.special import binom
-from shapely.geometry import Point
 import OrganicShapes
 from multiprocessing import Process
 
@@ -231,8 +229,6 @@ def gen_DNA_shape():
 
 
 
-    pol = Polygon(zip(x, y))
-
     # Vectorized point-in-polygon fill: cv2.fillPoly fills canvas[q, p] = 1
     # for (p, q) inside the polygon defined by (x, y) vertex pairs, which is
     # exactly the shapely test `Polygon(zip(x, y)).contains(Point(p, q))`.
@@ -437,8 +433,6 @@ def gen_DNA_shape_many():
         # print('y', ys_lbl)
 
 
-
-        pol = Polygon(zip(x, y))
 
         i0, i1 = max(0, int(ymid - 200)), min(int(ymid + 200), arr.shape[0] - 1)
         j0, j1 = max(0, int(xmid - 200)), min(arr.shape[1] - 1, int(xmid + 200))

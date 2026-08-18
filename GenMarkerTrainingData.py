@@ -10,7 +10,7 @@ from perlin_noise import PerlinNoise
 import IS_TrainData as base
 
 RESOLUTION = base.RESOLUTION  # 400, single-molecule tile size
-MIN_MARKER_PIXELS = 9  # reject specks smaller than this after thresholding
+MIN_MARKER_AREA = 9  # reject specks with contour area smaller than this after thresholding
 SPOT_THRESHOLD = 2  # matches IS_TrainData.generate_image's spt_th
 
 
@@ -45,7 +45,7 @@ def _mask_to_polygon(mask):
     if not contours:
         return None
     contour = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(contour) < MIN_MARKER_PIXELS:
+    if cv2.contourArea(contour) < MIN_MARKER_AREA:
         return None
     epsilon = 0.01 * cv2.arcLength(contour, True)
     approx = cv2.approxPolyDP(contour, epsilon, True)
