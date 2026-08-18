@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from perlin_noise import PerlinNoise
+from tqdm import tqdm
 
 import IS_TrainData as base
 
@@ -183,7 +184,7 @@ def generate_dataset(root, n_train=800, n_val=200, seed_base=1000):
             chunks[i % n_workers].append(i)
 
         procs = [_gen_parallel(chunk, img_dir, lbl_dir, seed0)
-                 for chunk in chunks if chunk]
+                 for chunk in tqdm(chunks) if chunk]
         for p in procs:
             p.start()
         for p in procs:
@@ -228,7 +229,7 @@ if __name__ == '__main__':
         assert all(0.0 <= c <= 1.0 for c in coords), 'coords not normalized to [0,1]'
     print(f'self-check OK: seed=0 produced {n} marker instances -> {img_fn}, {lbl_fn}')
 
-    dataset_root = os.path.join('SynthData', 'MarkerSet1')
-    counts = generate_dataset(dataset_root, n_train=800, n_val=200)
+    dataset_root = os.path.join('SynthData', 'MarkerSet2')
+    counts = generate_dataset(dataset_root, n_train=4000, n_val=800)
     print(f'generated {len(counts)} samples -> {dataset_root} '
           f'(avg {np.mean(counts):.1f} markers/image, {sum(1 for c in counts if c == 0)} empty)')

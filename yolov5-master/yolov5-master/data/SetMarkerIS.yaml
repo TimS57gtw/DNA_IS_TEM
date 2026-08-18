@@ -1,5 +1,5 @@
 # SynthData marker instance segmentation dataset
-path: SynthData/MarkerSet1
+path: G:\seife\PycharmG\DNA_IS_TEM\SynthData\MarkerSet2
 train: images/train
 val: images/val
 

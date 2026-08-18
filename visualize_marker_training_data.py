@@ -4,10 +4,10 @@ import os
 import cv2
 import numpy as np
 
-SYNTH_DIR = os.path.join('SynthData', 'MarkerSet1', 'images', 'train')
-SYNTH_LBL_DIR = os.path.join('SynthData', 'MarkerSet1', 'labels', 'train')
+SYNTH_DIR = os.path.join('SynthData', 'MarkerSet2', 'images', 'train')
+SYNTH_LBL_DIR = os.path.join('SynthData', 'MarkerSet2', 'labels', 'train')
 REAL_CUTS_DIR = r'F:\Data\DimerAnalysis\Result\cuts'
-OUT_DIR = os.path.join('SynthData', 'MarkerSet1_preview')
+OUT_DIR = os.path.join('SynthData', 'MarkerSet2_preview')
 
 
 def draw_polygons(img_path, lbl_path, out_path):
