@@ -169,10 +169,8 @@ class _gen_parallel(Process):
                 seed=self.seed0 + i)
 
 
-def generate_dataset(root, n_train=800, n_val=200, seed_base=1000, n_workers=None):
-    if n_workers is None:
-        n_workers = os.cpu_count() or 8
-    n_workers = max(1, n_workers)
+def generate_dataset(root, n_train=800, n_val=200, seed_base=1000):
+    n_workers = max(1, os.cpu_count() or 8)
 
     for split, n, seed0 in (('train', n_train, seed_base), ('val', n_val, seed_base + n_train)):
         img_dir = os.path.join(root, 'images', split)
@@ -190,6 +188,13 @@ def generate_dataset(root, n_train=800, n_val=200, seed_base=1000, n_workers=Non
             p.start()
         for p in procs:
             p.join()
+
+        failed = [p for p in procs if p.exitcode != 0]
+        if failed:
+            raise RuntimeError(
+                f'{len(failed)} of {len(procs)} marker-generation worker(s) crashed '
+                f'(exitcode != 0) while generating split {split!r} — '
+                f'dataset under {root!r} is incomplete')
 
     # Recompute per-sample marker counts from the written label files, since
     # counts can no longer be collected synchronously from worker processes.
