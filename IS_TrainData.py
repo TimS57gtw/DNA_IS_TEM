@@ -233,14 +233,14 @@ def gen_DNA_shape():
 
     pol = Polygon(zip(x, y))
 
-
-    for i in tqdm(range(RESOLUTION), disable=True):
-        for j in range(RESOLUTION):
-            for p in [pol]:
-                pt = Point(i, j)
-                if p.contains(pt):
-                    arr[i, j] = 1
-                    break
+    # Vectorized point-in-polygon fill: cv2.fillPoly fills canvas[q, p] = 1
+    # for (p, q) inside the polygon defined by (x, y) vertex pairs, which is
+    # exactly the shapely test `Polygon(zip(x, y)).contains(Point(p, q))`.
+    # We want arr[i, j] = 1 for Point(i, j) inside pol, i.e. arr = canvas.T.
+    canvas = np.zeros((arr.shape[1], arr.shape[0]), dtype=np.uint8)
+    pts = np.stack([x, y], axis=1).astype(np.int32).reshape(-1, 1, 2)
+    cv2.fillPoly(canvas, [pts], 1)
+    arr[:] = canvas.T
 
 
    #  plt.imshow(arr)
@@ -440,14 +440,17 @@ def gen_DNA_shape_many():
 
         pol = Polygon(zip(x, y))
 
+        i0, i1 = max(0, int(ymid - 200)), min(int(ymid + 200), arr.shape[0] - 1)
+        j0, j1 = max(0, int(xmid - 200)), min(arr.shape[1] - 1, int(xmid + 200))
 
-        for i in tqdm(range(max(0, int(ymid - 200)), min(int(ymid + 200), arr.shape[0]-1)), disable=True, desc='GenLabel'):
-            for j in range(max(0, int(xmid - 200)), min(arr.shape[1] - 1, int(xmid + 200))):
-                for p in [pol]:
-                    pt = Point(i, j)
-                    if p.contains(pt):
-                        arr[i, j] = 1
-                        break
+        # Vectorized point-in-polygon fill (see gen_DNA_shape for the
+        # canvas/transpose reasoning). Only the original loop's bounding
+        # window is written, since arr accumulates shapes across molecules.
+        canvas = np.zeros((arr.shape[1], arr.shape[0]), dtype=np.uint8)
+        pts = np.stack([x, y], axis=1).astype(np.int32).reshape(-1, 1, 2)
+        cv2.fillPoly(canvas, [pts], 1)
+        fill = canvas.T
+        arr[i0:i1, j0:j1] = np.maximum(arr[i0:i1, j0:j1], fill[i0:i1, j0:j1])
 
 
    #  plt.imshow(arr)

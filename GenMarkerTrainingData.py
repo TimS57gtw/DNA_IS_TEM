@@ -1,5 +1,6 @@
 import os
 import random
+from multiprocessing import Process
 
 import cv2
 import numpy as np
@@ -67,9 +68,11 @@ def generate_marker_sample(save_fn, label_fn, seed=None):
     sig = noise_sig * noise_mu
     sig = min(0.5, sig)
 
+    coarse_res = 40
     perlin_x = PerlinNoise(octaves=octaves)
-    noise = [[perlin_x([i / RESOLUTION, j / RESOLUTION]) for j in range(RESOLUTION)]
-              for i in range(RESOLUTION)]
+    coarse = np.array([[perlin_x([i / coarse_res, j / coarse_res]) for j in range(coarse_res)]
+                        for i in range(coarse_res)])
+    noise = cv2.resize(coarse, (RESOLUTION, RESOLUTION), interpolation=cv2.INTER_CUBIC)
     noise -= np.average(noise)
     noise /= np.std(noise)
     noise *= sig
@@ -87,29 +90,22 @@ def generate_marker_sample(save_fn, label_fn, seed=None):
     heights = [-np.random.uniform((mol_height + noise_mu) / 2, mol_height + noise_mu)
                for _ in range(no_spots)]
 
-    non_zero_indices = np.nonzero(label)
-    average_position = np.mean(np.column_stack(non_zero_indices), axis=0)
-
-    kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
-    borderT = cv2.filter2D(label.astype(np.uint8), -1, kernel)
-    k2s = int((25 * RESOLUTION / 400) / 2) * 2 + 1
-    kernel2 = np.ones((k2s, k2s))
-    border = cv2.filter2D(borderT.astype(np.uint8), -1, kernel2)
-    brd = np.argwhere(border > 0)
+    # Restrict marker spots to the molecule's footprint plus a small margin
+    # just outside it ("barely outside"), instead of scattering them over
+    # the whole tile — dilate the molecule mask and sample positions from
+    # the dilated area.
+    margin_px = int((20 * RESOLUTION / 400) / 2) * 2 + 1
+    dil_kernel = np.ones((margin_px, margin_px), np.uint8)
+    mol_area = cv2.dilate(label.astype(np.uint8), dil_kernel)
+    area_px = np.argwhere(mol_area > 0)
 
     spot_arr = np.zeros_like(arr)
     polygons = []
 
     for i in range(no_spots):
-        ordered = np.random.random() < 0.7
-        on_border = np.random.random() < 0.5
-        if ordered:
-            if on_border and len(brd) > 0:
-                pos = brd[np.random.randint(0, len(brd))]
-                posx, posy = pos[0], pos[1]
-            else:
-                posy = np.random.normal(average_position[1], RESOLUTION / 5)
-                posx = np.random.normal(average_position[0], RESOLUTION / 5)
+        if len(area_px) > 0:
+            pos = area_px[np.random.randint(0, len(area_px))]
+            posx, posy = pos[0], pos[1]
         else:
             posx = np.random.randint(0, RESOLUTION)
             posy = np.random.randint(0, RESOLUTION)
@@ -153,6 +149,60 @@ def generate_marker_sample(save_fn, label_fn, seed=None):
     return len(polygons)
 
 
+class _gen_parallel(Process):
+    """Generates a chunk of samples (a list of (index, seed) pairs) for one
+    split in a subprocess, mirroring IS_TrainData.gen_parallel's pattern."""
+
+    def __init__(self, indices, img_dir, lbl_dir, seed0):
+        super().__init__()
+        self.indices = indices
+        self.img_dir = img_dir
+        self.lbl_dir = lbl_dir
+        self.seed0 = seed0
+
+    def run(self) -> None:
+        for i in self.indices:
+            fn = f'{str(i).zfill(6)}'
+            generate_marker_sample(
+                os.path.join(self.img_dir, fn + '.png'),
+                os.path.join(self.lbl_dir, fn + '.txt'),
+                seed=self.seed0 + i)
+
+
+def generate_dataset(root, n_train=800, n_val=200, seed_base=1000, n_workers=None):
+    if n_workers is None:
+        n_workers = os.cpu_count() or 8
+    n_workers = max(1, n_workers)
+
+    for split, n, seed0 in (('train', n_train, seed_base), ('val', n_val, seed_base + n_train)):
+        img_dir = os.path.join(root, 'images', split)
+        lbl_dir = os.path.join(root, 'labels', split)
+        os.makedirs(img_dir, exist_ok=True)
+        os.makedirs(lbl_dir, exist_ok=True)
+
+        chunks = [[] for _ in range(n_workers)]
+        for i in range(n):
+            chunks[i % n_workers].append(i)
+
+        procs = [_gen_parallel(chunk, img_dir, lbl_dir, seed0)
+                 for chunk in chunks if chunk]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join()
+
+    # Recompute per-sample marker counts from the written label files, since
+    # counts can no longer be collected synchronously from worker processes.
+    counts = []
+    for split, n in (('train', n_train), ('val', n_val)):
+        lbl_dir = os.path.join(root, 'labels', split)
+        for i in range(n):
+            fn = os.path.join(lbl_dir, f'{str(i).zfill(6)}.txt')
+            with open(fn) as f:
+                counts.append(len(f.read().splitlines()))
+    return counts
+
+
 if __name__ == '__main__':
     import tempfile
     tmp = tempfile.mkdtemp()
@@ -172,3 +222,8 @@ if __name__ == '__main__':
         assert len(coords) >= 6 and len(coords) % 2 == 0, f'bad polygon length {len(coords)}'
         assert all(0.0 <= c <= 1.0 for c in coords), 'coords not normalized to [0,1]'
     print(f'self-check OK: seed=0 produced {n} marker instances -> {img_fn}, {lbl_fn}')
+
+    dataset_root = os.path.join('SynthData', 'MarkerSet1')
+    counts = generate_dataset(dataset_root, n_train=800, n_val=200)
+    print(f'generated {len(counts)} samples -> {dataset_root} '
+          f'(avg {np.mean(counts):.1f} markers/image, {sum(1 for c in counts if c == 0)} empty)')

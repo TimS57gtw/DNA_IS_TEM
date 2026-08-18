@@ -1,0 +1,7 @@
+# SynthData marker instance segmentation dataset
+path: SynthData/MarkerSet1
+train: images/train
+val: images/val
+
+names:
+  0: Marker
