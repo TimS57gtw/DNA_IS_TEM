@@ -20,20 +20,17 @@ from classes.find_dimers import find_dimer, check_for_equidistant_dimers
 from classes.find_agglomerates import find_agglomerates
 from classes.find_ith_smallest_distance import find_ith_smallest_distance
 
-YOLOV5_ROOT = r'G:\seife\PycharmG\DNA_IS_TEM\yolov5-master\yolov5-master'
-if YOLOV5_ROOT not in sys.path:
-    sys.path.insert(0, YOLOV5_ROOT)
-
-from models.common import DetectMultiBackend
-from utils.general import non_max_suppression, scale_boxes
-from utils.segment.general import masks2segments, process_mask
-from utils.torch_utils import select_device
-import torch
-
 NM_P_PX = 0.8431  # from yolov5-master/segment/predictTEM.py
 
 
 def load_marker_model(weights, device=''):
+    YOLOV5_ROOT = r'G:\seife\PycharmG\DNA_IS_TEM\yolov5-master\yolov5-master'
+    if YOLOV5_ROOT not in sys.path:
+        sys.path.insert(0, YOLOV5_ROOT)
+
+    from models.common import DetectMultiBackend
+    from utils.torch_utils import select_device
+
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=False, data=None, fp16=False)
     return model, device
@@ -43,6 +40,14 @@ def detect_markers_yolo(crop_rgb, model, device, imgsz=400, conf_thres=0.25, iou
     """Run the trained marker YOLOv5-seg model on one molecule crop.
     Returns (val, y, x, r) tuples matching detect_in_crop's output shape,
     val = detection confidence, r = sqrt(area / pi) from the predicted mask."""
+    YOLOV5_ROOT = r'G:\seife\PycharmG\DNA_IS_TEM\yolov5-master\yolov5-master'
+    if YOLOV5_ROOT not in sys.path:
+        sys.path.insert(0, YOLOV5_ROOT)
+
+    import torch
+    from utils.general import non_max_suppression, scale_boxes
+    from utils.segment.general import masks2segments, process_mask
+
     h0, w0 = crop_rgb.shape[:2]
     img = cv2.resize(crop_rgb, (imgsz, imgsz))
     im = torch.from_numpy(img).to(device).float().permute(2, 0, 1) / 255
